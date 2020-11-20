@@ -1,0 +1,10 @@
+(library
+  (name elon)
+  (libraries sedlex menhirLib containers uuseg.string)
+  (preprocess
+    (pps sedlex.ppx ppx_deriving.show))
+  (flags :standard))
+
+(menhir
+  (modules parser)
+  (flags --external-tokens Tokens --explain))
