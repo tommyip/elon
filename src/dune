@@ -1,6 +1,6 @@
 (library
   (name elon)
-  (libraries sedlex menhirLib containers uuseg.string)
+  (libraries sedlex menhirLib containers containers-data uuseg.string)
   (preprocess
     (pps sedlex.ppx ppx_deriving.show))
   (flags :standard))
