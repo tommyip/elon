@@ -1,9 +1,29 @@
+%token INDENT DEDENT NEWLINE
+
+%token L_PAREN "("
+%token R_PAREN ")"
+%token L_BRACKET "{"
+%token R_BRACKET "}"
+%token COMMA ","
+%token COLON ":"
+%token PLUS "+"
+%token MINUS "-"
+%token TIMES "*"
+%token SLASH "/"
+
+%token UNIT
+%token <bool> BOOL
 %token <Int64.t> INT
-%token PLUS
-%token MINUS
-%token TIMES
-%token SLASH
+%token <float> FLOAT
+%token <string> CHAR
+%token <string> STRING
+
+%token <string> IDENT
+
 %token EOF
+
+%left "+" "-"
+%left "*" "/"
 
 %{
   open Ast
@@ -13,21 +33,17 @@
 %%
 
 prog:
-  | e=expr EOF { e }
-  ;
+  | e = expr; NEWLINE; EOF { e }
 expr:
-  | e=additive_expr { e }
-  ;
-additive_expr:
-  | left=additive_expr PLUS right=multiplicative_expr { BinOp { op=Add; left; right } }
-  | left=additive_expr MINUS right=multiplicative_expr { BinOp { op=Sub; left; right } }
-  | e=multiplicative_expr { e }
-  ;
-multiplicative_expr:
-  | left=multiplicative_expr TIMES right=atom { BinOp { op=Mul; left; right } }
-  | left=multiplicative_expr SLASH right=atom { BinOp { op=Div; left; right } }
-  | e=atom { e }
-  ;
-atom:
+  | UNIT { Literal Unit }
+  | x = BOOL { Literal (Bool x) }
   | x = INT { Literal (Int x) }
-  ;
+  | x = FLOAT { Literal (Float x) }
+  | x = CHAR { Literal (Char x) }
+  | x = STRING { Literal (String x) }
+  | id = IDENT { Ident id }
+  | "("; e = expr; ")" { e }
+  | left = expr; "+"; right = expr { BinOp { op=Add; left; right } }
+  | left = expr; "-"; right = expr { BinOp { op=Sub; left; right } }
+  | left = expr; "*"; right = expr { BinOp { op=Mul; left; right } }
+  | left = expr; "/"; right = expr { BinOp { op=Div; left; right } }

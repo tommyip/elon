@@ -16,7 +16,7 @@ type t
 
   | UNIT
   | BOOL of bool
-  | INT of Int64.t
+  | INT of Int64.t [@printer fun fmt -> fprintf fmt "(INT %Ld)"]
   | FLOAT of float
   | CHAR of string
   | STRING of string
