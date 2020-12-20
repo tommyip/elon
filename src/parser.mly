@@ -6,10 +6,13 @@
 %token R_BRACKET "}"
 %token COMMA ","
 %token COLON ":"
+%token EQ "="
 %token PLUS "+"
 %token MINUS "-"
 %token TIMES "*"
 %token SLASH "/"
+
+%token LET
 
 %token UNIT
 %token <bool> BOOL
@@ -33,7 +36,10 @@
 %%
 
 prog:
-  | e = expr; NEWLINE; EOF { e }
+  | e = compound_expr; NEWLINE; EOF { e }
+compound_expr:
+  | LET; name = IDENT; EQ; value = expr; NEWLINE; result = compound_expr { Let { name; value; result } }
+  | e = expr { e }
 expr:
   | UNIT { Literal Unit }
   | x = BOOL { Literal (Bool x) }
@@ -43,7 +49,9 @@ expr:
   | x = STRING { Literal (String x) }
   | id = IDENT { Ident id }
   | "("; e = expr; ")" { e }
-  | left = expr; "+"; right = expr { BinOp { op=Add; left; right } }
-  | left = expr; "-"; right = expr { BinOp { op=Sub; left; right } }
-  | left = expr; "*"; right = expr { BinOp { op=Mul; left; right } }
-  | left = expr; "/"; right = expr { BinOp { op=Div; left; right } }
+  | left = expr; op = binop; right = expr { BinOp { op; left; right } }
+%inline binop:
+  | "+" { Add }
+  | "-" { Sub }
+  | "*" { Mul }
+  | "/" { Div }

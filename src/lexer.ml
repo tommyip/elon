@@ -32,6 +32,7 @@ let rec tokenize state lexbuf =
     | '}' -> R_BRACKET
     | ',' -> COMMA
     | ':' -> COLON
+    | '=' -> EQ
     | '+' -> PLUS
     | '-' -> MINUS
     | '*' -> TIMES
@@ -39,6 +40,7 @@ let rec tokenize state lexbuf =
     | "()" -> UNIT
     | "true" -> BOOL true
     | "false" -> BOOL false
+    | "let" -> LET
     | integer -> INT (Int64.of_string (Sedlexing.Utf8.lexeme lexbuf))
     | float -> FLOAT (Float.of_string (Sedlexing.Utf8.lexeme lexbuf))
     | '\'', any, Star Sub(any, '\''),'\'' ->

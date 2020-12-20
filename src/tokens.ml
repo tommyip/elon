@@ -9,10 +9,13 @@ type t
   | R_BRACKET
   | COMMA
   | COLON
+  | EQ
   | PLUS
   | MINUS
   | TIMES
   | SLASH
+
+  | LET
 
   | UNIT
   | BOOL of bool

@@ -10,6 +10,8 @@ let literal_sexp = function
   | String s -> of_pair (atom "String", atom s)
 
 let rec expr_sexp = function
+  | Let { name; value; result } -> of_triple
+      (atom "let", of_pair (atom name, expr_sexp value), expr_sexp result)
   | BinOp { op; left; right } -> CCSexp.of_triple
       (atom (show_bin_op op), expr_sexp left, expr_sexp right)
   | Literal lit -> literal_sexp lit

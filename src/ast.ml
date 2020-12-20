@@ -14,6 +14,7 @@ type literal
   | String of string
 
 type expr
-  = BinOp of { op: bin_op; left: expr; right: expr }
+  = Let of { name: string; value: expr; result: expr }
+  | BinOp of { op: bin_op; left: expr; right: expr }
   | Literal of literal
   | Ident of string
