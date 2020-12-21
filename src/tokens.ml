@@ -18,13 +18,13 @@ type t
   | LET
 
   | UNIT
-  | BOOL of bool
-  | INT of Int64.t [@printer fun fmt -> fprintf fmt "(INT %Ld)"]
-  | FLOAT of float
-  | CHAR of string
-  | STRING of string
+  | BOOL of bool [@printer fun fmt -> fprintf fmt "BOOL %b"]
+  | INT of Int64.t [@printer fun fmt -> fprintf fmt "INT %Ld"]
+  | FLOAT of float [@printer fun fmt -> fprintf fmt "FLOAT %f"]
+  | CHAR of string [@printer fun fmt -> fprintf fmt "CHAR '%s'"]
+  | STRING of string [@printer fun fmt -> fprintf fmt "STRING \"%s\""]
 
-  | IDENT of string
+  | IDENT of string [@printer fun fmt -> fprintf fmt "IDENT %s"]
   | EOF
   [@@deriving show { with_path = false }]
 

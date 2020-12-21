@@ -10,4 +10,4 @@ let compile ctx =
   let token_gen = Lexer.init (lexbuf ()) in
   let parse = MenhirLib.Convert.Simplified.traditional2revised Parser.prog in
   let ast = parse token_gen in
-  Ast_sexp.pp fmt ast;
+  Ast.pp_expr fmt ast

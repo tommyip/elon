@@ -38,7 +38,12 @@
 prog:
   | e = compound_expr; NEWLINE; EOF { e }
 compound_expr:
-  | LET; name = IDENT; EQ; value = expr; NEWLINE; result = compound_expr { Let { name; value; result } }
+  | LET; name = IDENT; EQ; value = single_line_expr; NEWLINE; result = compound_expr { Let { name; value; result } }
+  | LET; name = IDENT; EQ; NEWLINE;
+      INDENT; value = compound_expr; NEWLINE;
+    DEDENT; result = compound_expr { Let { name; value; result }}
+  | e = single_line_expr { e }
+single_line_expr:
   | e = expr { e }
 expr:
   | UNIT { Literal Unit }

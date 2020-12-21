@@ -1,3 +1,4 @@
+open Containers
 open Tokens
 
 exception LexingError of string * (Lexing.position * Lexing.position)
@@ -41,8 +42,8 @@ let rec tokenize state lexbuf =
     | "true" -> BOOL true
     | "false" -> BOOL false
     | "let" -> LET
-    | integer -> INT (Int64.of_string (Sedlexing.Utf8.lexeme lexbuf))
-    | float -> FLOAT (Float.of_string (Sedlexing.Utf8.lexeme lexbuf))
+    | integer -> INT (Int64.of_string_exn (Sedlexing.Utf8.lexeme lexbuf))
+    | float -> FLOAT (Float.of_string_exn (Sedlexing.Utf8.lexeme lexbuf))
     | '\'', any, Star Sub(any, '\''),'\'' ->
         (* A char is a unicode extended grapheme cluster which can contain
            multiple codepoints. *)
@@ -89,17 +90,16 @@ let init lexbuf =
     let start, end_ = Sedlexing.lexing_positions lexbuf in
     (tok, start, end_)
 
-let lexing_position_pp fmt pos =
-  let open Lexing in
-  Format.fprintf fmt "%d:%d" pos.pos_lnum pos.pos_cnum
-
 let token_stream_pp fmt lexbuf =
   let token_gen = init lexbuf in
+  Format.pp_open_vbox fmt 0;
   let rec aux () =
     let tok, start, end_ = token_gen () in
-    CCFormat.fprintf fmt "%-35s %a->%a\n"
-      (Tokens.show tok)
-      lexing_position_pp start
-      lexing_position_pp end_;
-    if tok <> EOF then aux ()
-  in aux ()
+    Format.fprintf fmt "@[<h 2>%3d:%-3d %3d:%-3d@ %a@]@,"
+      start.pos_lnum (start.pos_cnum - start.pos_bol) end_.pos_lnum (end_.pos_cnum - end_.pos_bol)
+      Tokens.pp tok;
+    match tok with
+    | EOF -> ()
+    | _ -> aux ()
+  in aux ();
+  Format.pp_close_box fmt ();
