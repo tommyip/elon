@@ -5,6 +5,12 @@ type bin_op
   | Sub
   | Mul
   | Div
+  | Eq
+  | NotEq
+  | Lt
+  | Gt
+  | LtEq
+  | GtEq
 
 type literal
   = Unit
@@ -16,15 +22,24 @@ type literal
 
 type expr
   = Let of { name: string; value: expr; result: expr }
+  | Conditional of { cond: expr; consequent: expr; alternative: expr }
   | BinOp of { op: bin_op; left: expr; right: expr }
   | Literal of literal
   | Ident of string
 
-let pp_bin_op fmt = function
-  | Add -> pp_print_char fmt '+'
-  | Sub -> pp_print_char fmt '-'
-  | Mul -> pp_print_char fmt '*'
-  | Div -> pp_print_char fmt '/'
+let pp_bin_op fmt bin_op =
+  let sym = match bin_op with
+    | Add -> "+"
+    | Sub -> "-"
+    | Mul -> "*"
+    | Div -> "/"
+    | Eq -> "="
+    | NotEq -> "!="
+    | Lt -> "<"
+    | Gt -> ">"
+    | LtEq -> "<="
+    | GtEq -> ">="
+  in pp_print_string fmt sym
 
 let pp_literal fmt = function
   | Unit -> pp_print_string fmt "()"
@@ -37,6 +52,9 @@ let pp_literal fmt = function
 let rec pp_expr fmt = function
   | Let { name; value; result } ->
     fprintf fmt "@[<hov 2>(let %s@;<1>%a@;<1>%a@,)@]" name pp_expr value pp_expr result
+  | Conditional { cond; consequent; alternative } ->
+    fprintf fmt "@[<hov 2>(if %a@;<1>@[<hv>%a@;<1>%a@]@,)@]"
+      pp_expr cond pp_expr consequent pp_expr alternative
   | BinOp { op; left; right } ->
     fprintf fmt "@[<hov 2>(%a@;<1>%a@;<1>%a@,)@]" pp_bin_op op pp_expr left pp_expr right
   | Literal lit -> pp_literal fmt lit

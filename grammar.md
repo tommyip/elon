@@ -22,7 +22,7 @@ record Coord =
     y: float,
     z: float,
   }
-  
+
 Coord { x: 238.4, y: 45.0, z: 931.43 }  # records
 
 variant Destination =
@@ -44,7 +44,7 @@ match (a mod 3, a mod 5)     # match expression
 | _ -> Int.to_string(a)      # wildcard / catch-all case
 
 let coolness =
-  if a > 9000                # conditional expression
+  if a > 9000 then           # conditional expression
     "Over 9000"              # indentation-based scoping
   else                       # optional-else branch
     "Meh"
@@ -52,7 +52,7 @@ let coolness =
 coolness                     #=> "Meh"
 
 # single-line conditional expression
-let cool = "Over 9000" if a > 9000 else "Meh"
+let cool = if a > 9000 then "Over 9000" else "Meh"
 
 # Functions
 let hypotenuse(a: float, b: float) -> float =
@@ -65,7 +65,7 @@ let add(x: int)(y: int) -> int = x + y
 
 # Applying all arguments evaluates the function
 add(1)(2)
-# Partially applying returns a function that takes the remaining arguments 
+# Partially applying returns a function that takes the remaining arguments
 let bump: (int) -> int = add(1)
 # Functions are values and can be passed around (ie first-class functions)
 List.map(bump)([1, 2, 3, 4, 5])  #=> [2, 3, 4, 5, 6]
@@ -82,7 +82,7 @@ List.map((x) => x * multiplier)([1, 3, 5, 7, 8])  #=> [1, 9, 25, 49, 64]
 # Expression body must either be on the same line as its parent or
 # start from a newline with one indentation.
 let _ =
-  if cond
+  if cond then
     # then branch
   else
     # else branch

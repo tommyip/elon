@@ -31,9 +31,14 @@ let rec tokenize state lexbuf =
     | ')' -> R_PAREN
     | '{' -> L_BRACKET
     | '}' -> R_BRACKET
+    | '<' -> L_ANGLE_BRACKET
+    | '>' -> R_ANGLE_BRACKET
     | ',' -> COMMA
     | ':' -> COLON
     | '=' -> EQ
+    | "!=" -> BANG_EQ
+    | "<=" -> LT_EQ
+    | ">=" -> GT_EQ
     | '+' -> PLUS
     | '-' -> MINUS
     | '*' -> TIMES
@@ -42,6 +47,9 @@ let rec tokenize state lexbuf =
     | "true" -> BOOL true
     | "false" -> BOOL false
     | "let" -> LET
+    | "if" -> IF
+    | "then" -> THEN
+    | "else" -> ELSE
     | integer -> INT (Int64.of_string_exn (Sedlexing.Utf8.lexeme lexbuf))
     | float -> FLOAT (Float.of_string_exn (Sedlexing.Utf8.lexeme lexbuf))
     | '\'', any, Star Sub(any, '\''),'\'' ->

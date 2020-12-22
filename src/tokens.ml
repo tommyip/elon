@@ -7,15 +7,23 @@ type t
   | R_PAREN
   | L_BRACKET
   | R_BRACKET
+  | L_ANGLE_BRACKET
+  | R_ANGLE_BRACKET
   | COMMA
   | COLON
   | EQ
+  | BANG_EQ
+  | LT_EQ
+  | GT_EQ
   | PLUS
   | MINUS
   | TIMES
   | SLASH
 
   | LET
+  | IF
+  | THEN
+  | ELSE
 
   | UNIT
   | BOOL of bool [@printer fun fmt -> fprintf fmt "BOOL %b"]
