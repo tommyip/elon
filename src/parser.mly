@@ -16,6 +16,7 @@
 %token MINUS "-"
 %token TIMES "*"
 %token SLASH "/"
+%token ARROW "=>"
 
 %token LET "let"
 %token IF "if"
@@ -33,6 +34,8 @@
 
 %token EOF
 
+%nonassoc "else"
+%nonassoc "=>"
 %left "=" "!="
 %left "<" ">" "<=" ">="
 %left "+" "-"
@@ -57,8 +60,13 @@ multiline_expr:
   | e = conditional_expr { e }
 
 inline_expr:
+  | e = inline_expr_not_id { e }
+  | id = IDENT { Ident id }
+
+inline_expr_not_id:
   | e = simple_expr { e }
   | e = inline_conditional_expr { e }
+  | e = inline_function_expr { e }
 
 block:
   | NEWLINE; INDENT; e = expr; NEWLINE?; DEDENT { e }
@@ -76,20 +84,28 @@ conditional_expr:
     "else";
       alternative = block; { Conditional { cond; consequent; alternative } }
 
-inline_conditional_expr:
+%inline inline_conditional_expr:
   | "if"; cond = inline_expr; "then"; consequent = inline_expr;
     "else"; alternative = inline_expr { Conditional { cond; consequent; alternative } }
 
-simple_expr:
+parameter_list:
+  | UNIT { [] }
+  | "("; param = IDENT; ")" { [param] }
+  | "("; hd = IDENT; ","; tl = separated_nonempty_list(",", IDENT); ")" { hd :: tl }
+
+%inline inline_function_expr:
+  | params = parameter_list; "=>"; body = inline_expr { Function { params; body } }
+
+%inline simple_expr:
   | UNIT { Literal Unit }
   | x = BOOL { Literal (Bool x) }
   | x = INT { Literal (Int x) }
   | x = FLOAT { Literal (Float x) }
   | x = CHAR { Literal (Char x) }
   | x = STRING { Literal (String x) }
-  | id = IDENT { Ident id }
-  | "("; e = inline_expr; ")" { e }
-  | left = simple_expr; op = binop; right = simple_expr { BinOp { op; left; right } }
+  | "("; e = inline_expr_not_id; ")" { e }
+  | "("; id = IDENT; ")" { Ident id }
+  | left = inline_expr; op = binop; right = inline_expr { BinOp { op; left; right } }
 
 %inline binop:
   | "+" { Add }

@@ -19,6 +19,7 @@ type t
   | MINUS
   | TIMES
   | SLASH
+  | ARROW
 
   | LET
   | IF
