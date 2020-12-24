@@ -24,6 +24,7 @@ type expr
   = Let of { name: string; value: expr; result: expr }
   | Conditional of { cond: expr; consequent: expr; alternative: expr }
   | Function of { params: string list; body: expr }
+  | FnApplication of { fn: expr; args: expr list }
   | BinOp of { op: bin_op; left: expr; right: expr }
   | Literal of literal
   | Ident of string
@@ -58,7 +59,18 @@ let pp_string_list fmt lst =
     pp_print_string fmt s) lst;
   pp_print_char fmt ')'
 
-let rec pp_expr fmt = function
+let rec pp_args_list fmt lst =
+  if List.length lst > 0 then
+    pp_print_break fmt 1 0;
+    pp_open_hvbox fmt 0;
+    List.iteri (fun i arg ->
+      if i > 0 then
+        pp_print_break fmt 1 0;
+      pp_expr fmt arg
+    ) lst;
+    pp_close_box fmt ()
+
+and pp_expr fmt = function
   | Let { name; value; result } ->
     fprintf fmt "@[<hov 2>(let %s@;<1>%a@;<1>%a@,)@]" name pp_expr value pp_expr result
   | Conditional { cond; consequent; alternative } ->
@@ -66,6 +78,8 @@ let rec pp_expr fmt = function
       pp_expr cond pp_expr consequent pp_expr alternative
   | Function { params; body } ->
     fprintf fmt "@[<hov 2>(λ %a@;<1>%a@,)@]" pp_string_list params pp_expr body
+  | FnApplication { fn; args } ->
+    fprintf fmt "@[<hov 2>(%a%a@,)@]" pp_expr fn pp_args_list args
   | BinOp { op; left; right } ->
     fprintf fmt "@[<hov 2>(%a@;<1>%a@;<1>%a@,)@]" pp_bin_op op pp_expr left pp_expr right
   | Literal lit -> pp_literal fmt lit

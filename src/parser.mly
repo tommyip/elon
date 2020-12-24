@@ -23,7 +23,6 @@
 %token THEN "then"
 %token ELSE "else"
 
-%token UNIT
 %token <bool> BOOL
 %token <Int64.t> INT
 %token <float> FLOAT
@@ -36,6 +35,7 @@
 
 %nonassoc "else"
 %nonassoc "=>"
+%nonassoc "("
 %left "=" "!="
 %left "<" ">" "<=" ">="
 %left "+" "-"
@@ -67,6 +67,7 @@ inline_expr_not_id:
   | e = simple_expr { e }
   | e = inline_conditional_expr { e }
   | e = inline_function_expr { e }
+  | e = inline_fn_application_expr { e }
 
 block:
   | NEWLINE; INDENT; e = expr; NEWLINE?; DEDENT { e }
@@ -89,15 +90,18 @@ conditional_expr:
     "else"; alternative = inline_expr { Conditional { cond; consequent; alternative } }
 
 parameter_list:
-  | UNIT { [] }
+  | "("; ")" { [] }
   | "("; param = IDENT; ")" { [param] }
   | "("; hd = IDENT; ","; tl = separated_nonempty_list(",", IDENT); ")" { hd :: tl }
 
 %inline inline_function_expr:
   | params = parameter_list; "=>"; body = inline_expr { Function { params; body } }
 
+%inline inline_fn_application_expr:
+  | fn = inline_expr; "("; args = separated_list(",", inline_expr); ")" { FnApplication { fn; args } }
+
 %inline simple_expr:
-  | UNIT { Literal Unit }
+  | "("; ")" { Literal Unit }
   | x = BOOL { Literal (Bool x) }
   | x = INT { Literal (Int x) }
   | x = FLOAT { Literal (Float x) }

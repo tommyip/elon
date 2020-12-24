@@ -44,7 +44,6 @@ let rec tokenize state lexbuf =
     | '*' -> TIMES
     | '/' -> SLASH
     | "=>" -> ARROW
-    | "()" -> UNIT
     | "true" -> BOOL true
     | "false" -> BOOL false
     | "let" -> LET

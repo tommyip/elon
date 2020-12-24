@@ -26,7 +26,6 @@ type t
   | THEN
   | ELSE
 
-  | UNIT
   | BOOL of bool [@printer fun fmt -> fprintf fmt "BOOL %b"]
   | INT of Int64.t [@printer fun fmt -> fprintf fmt "INT %Ld"]
   | FLOAT of float [@printer fun fmt -> fprintf fmt "FLOAT %f"]
