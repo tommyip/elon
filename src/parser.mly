@@ -58,6 +58,7 @@ expr:
 multiline_expr:
   | e = let_expr { e }
   | e = conditional_expr { e }
+  | e = function_expr { e }
 
 inline_expr:
   | e = inline_expr_not_id { e }
@@ -89,13 +90,26 @@ conditional_expr:
   | "if"; cond = inline_expr; "then"; consequent = inline_expr;
     "else"; alternative = inline_expr { Conditional { cond; consequent; alternative } }
 
-parameter_list:
+%inline inline_parameter_list:
   | "("; ")" { [] }
   | "("; param = IDENT; ")" { [param] }
   | "("; hd = IDENT; ","; tl = separated_nonempty_list(",", IDENT); ")" { hd :: tl }
 
 %inline inline_function_expr:
-  | params = parameter_list; "=>"; body = inline_expr { Function { params; body } }
+  | params = inline_parameter_list; "=>"; body = inline_expr { Function { params; body } }
+
+multiline_separated_nonempty_list(sep, X):
+  | x = X { [x] }
+  | not_last = multiline_separated_nonempty_list(sep, X); sep; NEWLINE?; last = X { last :: not_last }
+
+%inline parameter_list:
+  | lst = inline_parameter_list { lst }
+  | "("; NEWLINE;
+      INDENT; lst = multiline_separated_nonempty_list(",", IDENT);
+    NEWLINE; DEDENT; ")" { List.rev lst }
+
+%inline function_expr:
+  | params = parameter_list; "=>"; body = block { Function { params; body } }
 
 %inline inline_fn_application_expr:
   | fn = inline_expr; "("; args = separated_list(",", inline_expr); ")" { FnApplication { fn; args } }
