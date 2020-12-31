@@ -1,9 +1,5 @@
 type t
-  = INDENT
-  | DEDENT
-  | NEWLINE
-
-  | L_PAREN
+  = L_PAREN
   | R_PAREN
   | L_BRACKET
   | R_BRACKET
@@ -34,6 +30,8 @@ type t
 
   | IDENT of string [@printer fun fmt -> fprintf fmt "IDENT %s"]
   | EOF
+
+  | IN'
   [@@deriving show { with_path = false }]
 
 (* Menhir looks for [Module.token] type *)

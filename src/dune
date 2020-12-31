@@ -3,8 +3,8 @@
   (libraries sedlex menhirLib containers containers-data uuseg.string)
   (preprocess
     (pps sedlex.ppx ppx_deriving.show))
-  (flags :standard))
+  (flags (:standard -warn-error -A)))
 
-(menhir
-  (modules parser)
-  (flags --external-tokens Tokens --explain))
+;;(menhir
+;;  (modules parser)
+;;  (flags --external-tokens Tokens --explain))

@@ -1,3 +1,5 @@
 (executable
   (name elonc)
-  (libraries elon))
+  (libraries elon)
+  (modes byte exe)
+  (flags (:standard -warn-error -A)))
