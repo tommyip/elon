@@ -31,7 +31,7 @@ type t
   | IDENT of string [@printer fun fmt -> fprintf fmt "IDENT %s"]
   | EOF
 
-  | IN'
+  | IN
   [@@deriving show { with_path = false }]
 
 (* Menhir looks for [Module.token] type *)

@@ -1,5 +1,3 @@
-%token INDENT DEDENT NEWLINE
-
 %token L_PAREN "("
 %token R_PAREN ")"
 %token L_BRACKET "{"
@@ -33,9 +31,9 @@
 
 %token EOF
 
-%nonassoc "else"
-%nonassoc "=>"
-%nonassoc "("
+%token IN
+
+%nonassoc IN
 %left "=" "!="
 %left "<" ">" "<=" ">="
 %left "+" "-"
@@ -49,81 +47,22 @@
 %%
 
 prog:
-  | e = expr; NEWLINE?; EOF { e }
+  | e = expr; EOF { e }
 
 expr:
-  | e = multiline_expr { e }
-  | e = inline_expr { e }
+  | e = primary { e }
+  | "("; e = expr; ")" { e }
+  | left = expr; op = binop; right = expr { BinOp { op; left; right } }
+  | "let"; name = IDENT; EQ; value = expr; IN; result = expr { Let { name; value; result } }
 
-multiline_expr:
-  | e = let_expr { e }
-  | e = conditional_expr { e }
-  | e = function_expr { e }
-
-inline_expr:
-  | e = inline_expr_not_id { e }
-  | id = IDENT { Ident id }
-
-inline_expr_not_id:
-  | e = simple_expr { e }
-  | e = inline_conditional_expr { e }
-  | e = inline_function_expr { e }
-  | e = inline_fn_application_expr { e }
-
-block:
-  | NEWLINE; INDENT; e = expr; NEWLINE?; DEDENT { e }
-
-let_expr:
-  | "let"; name = IDENT; EQ; value = inline_expr; NEWLINE;
-    result = expr  { Let { name; value; result } }
-  | "let"; name = IDENT; EQ;
-      value = block;
-    result = expr { Let { name; value; result } }
-
-conditional_expr:
-  | "if"; cond = inline_expr; "then";
-      consequent = block;
-    "else";
-      alternative = block; { Conditional { cond; consequent; alternative } }
-
-%inline inline_conditional_expr:
-  | "if"; cond = inline_expr; "then"; consequent = inline_expr;
-    "else"; alternative = inline_expr { Conditional { cond; consequent; alternative } }
-
-%inline inline_parameter_list:
-  | "("; ")" { [] }
-  | "("; param = IDENT; ")" { [param] }
-  | "("; hd = IDENT; ","; tl = separated_nonempty_list(",", IDENT); ")" { hd :: tl }
-
-%inline inline_function_expr:
-  | params = inline_parameter_list; "=>"; body = inline_expr { Function { params; body } }
-
-multiline_separated_nonempty_list(sep, X):
-  | x = X { [x] }
-  | not_last = multiline_separated_nonempty_list(sep, X); sep; NEWLINE?; last = X { last :: not_last }
-
-%inline parameter_list:
-  | lst = inline_parameter_list { lst }
-  | "("; NEWLINE;
-      INDENT; lst = multiline_separated_nonempty_list(",", IDENT);
-    NEWLINE; DEDENT; ")" { List.rev lst }
-
-%inline function_expr:
-  | params = parameter_list; "=>"; body = block { Function { params; body } }
-
-%inline inline_fn_application_expr:
-  | fn = inline_expr; "("; args = separated_list(",", inline_expr); ")" { FnApplication { fn; args } }
-
-%inline simple_expr:
+%inline primary:
   | "("; ")" { Literal Unit }
   | x = BOOL { Literal (Bool x) }
   | x = INT { Literal (Int x) }
   | x = FLOAT { Literal (Float x) }
   | x = CHAR { Literal (Char x) }
   | x = STRING { Literal (String x) }
-  | "("; e = inline_expr_not_id; ")" { e }
-  | "("; id = IDENT; ")" { Ident id }
-  | left = inline_expr; op = binop; right = inline_expr { BinOp { op; left; right } }
+  | id = IDENT { Ident id }
 
 %inline binop:
   | "+" { Add }

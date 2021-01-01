@@ -75,7 +75,7 @@ let rec token state =
   *)
   | _tok, { construct=Let; offside; _ } :: tl when col = offside ->
       state.stack <- { construct=Block; line; offside } :: tl;
-      internal_token IN'
+      internal_token IN
 
   | LET, { construct=Block; offside; _ } :: _ when col = offside ->
       state.stack <- { construct=Let; line; offside=col } :: state.stack;

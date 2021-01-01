@@ -5,6 +5,6 @@
     (pps sedlex.ppx ppx_deriving.show))
   (flags (:standard -warn-error -A)))
 
-;;(menhir
-;;  (modules parser)
-;;  (flags --external-tokens Tokens --explain))
+(menhir
+  (modules parser)
+  (flags --external-tokens Tokens --explain))
