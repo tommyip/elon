@@ -33,7 +33,7 @@
 
 %token IN
 
-%nonassoc IN
+%nonassoc IN, ELSE, "=>"
 %left "=" "!="
 %left "<" ">" "<=" ">="
 %left "+" "-"
@@ -46,14 +46,29 @@
 %start <expr> prog
 %%
 
-prog:
-  | e = expr; EOF { e }
+prog: e = expr; EOF { e }
 
 expr:
+  | e = expr_not_id { e }
+  | id = IDENT { Ident id }
+
+expr_not_id:
   | e = primary { e }
-  | "("; e = expr; ")" { e }
+  | e = paranthesize_expr { e }
   | left = expr; op = binop; right = expr { BinOp { op; left; right } }
   | "let"; name = IDENT; EQ; value = expr; IN; result = expr { Let { name; value; result } }
+  | "if"; cond = expr; "then"; consequent = expr; "else"; alternative = expr
+    { Conditional { cond; consequent; alternative } }
+  | params = parameter_list; "=>"; body = expr { Lambda { params; body } }
+
+parameter_list:
+  | "("; ")" { [] }
+  | "("; param = IDENT; ")" { [param] }
+  | "("; hd = IDENT; ","; tl = separated_nonempty_list(",", IDENT); ")" { hd :: tl }
+
+%inline paranthesize_expr:
+  | "("; e = expr_not_id; ")" { e }
+  | "("; id = IDENT; ")" { Ident id }
 
 %inline primary:
   | "("; ")" { Literal Unit }
@@ -62,7 +77,6 @@ expr:
   | x = FLOAT { Literal (Float x) }
   | x = CHAR { Literal (Char x) }
   | x = STRING { Literal (String x) }
-  | id = IDENT { Ident id }
 
 %inline binop:
   | "+" { Add }

@@ -23,7 +23,7 @@ type literal
 type expr
   = Let of { name: string; value: expr; result: expr }
   | Conditional of { cond: expr; consequent: expr; alternative: expr }
-  | Function of { params: string list; body: expr }
+  | Lambda of { params: string list; body: expr }
   | FnApplication of { fn: expr; args: expr list }
   | BinOp of { op: bin_op; left: expr; right: expr }
   | Literal of literal
@@ -76,7 +76,7 @@ and pp_expr fmt = function
   | Conditional { cond; consequent; alternative } ->
     fprintf fmt "@[<hov 2>(if %a@;<1>@[<hv>%a@;<1>%a@]@,)@]"
       pp_expr cond pp_expr consequent pp_expr alternative
-  | Function { params; body } ->
+  | Lambda { params; body } ->
     fprintf fmt "@[<hov 2>(λ %a@;<1>%a@,)@]" pp_string_list params pp_expr body
   | FnApplication { fn; args } ->
     fprintf fmt "@[<hov 2>(%a%a@,)@]" pp_expr fn pp_args_list args

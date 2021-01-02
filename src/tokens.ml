@@ -31,6 +31,7 @@ type t
   | IDENT of string [@printer fun fmt -> fprintf fmt "IDENT %s"]
   | EOF
 
+  (* Artificial tokens to be injected by the preparser *)
   | IN
   [@@deriving show { with_path = false }]
 
