@@ -1,5 +1,5 @@
 (executable
   (name elonc)
-  (libraries elon)
+  (libraries elon logs logs.fmt fmt.tty)
   (modes byte exe)
   (flags (:standard -warn-error -A)))

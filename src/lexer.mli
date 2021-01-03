@@ -4,4 +4,4 @@ type t = Tokens.t * Lexing.position * Lexing.position
 type gen = unit -> t
 
 val token : Sedlexing.lexbuf -> gen
-val pp : Format.formatter -> gen -> unit
+val pp : Format.formatter -> t -> unit

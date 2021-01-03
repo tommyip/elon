@@ -1,6 +1,8 @@
 open Containers
 open Lexing
+
 open Tokens
+open Helpers
 
 type t = token * Lexing.position * Lexing.position
 type gen = unit -> t
@@ -60,24 +62,15 @@ let rec tokenize lexbuf =
   | eof -> EOF
   | _ -> failwith "Unknown token"
 
-(* Capatibility with Menhir revised API *)
-let token lexbuf () =
-  let token = tokenize lexbuf in
-  let start, end_ = Sedlexing.lexing_positions lexbuf in
-  (token, start, end_)
-
-let pp_api fmt (tok, start, end_) =
+let pp fmt (tok, start, end_) =
   Format.fprintf fmt "@[<h 2>%3d:%-3d %3d:%-3d@ %a@]@,"
     start.pos_lnum (Helpers.column start) end_.pos_lnum (Helpers.column end_)
     Tokens.pp tok
 
-let pp fmt gen =
-  Format.pp_open_vbox fmt 0;
-  let rec aux () =
-    let tok, start, end_ = gen () in
-    pp_api fmt (tok, start, end_);
-    match tok with
-    | EOF -> ()
-    | _ -> aux ()
-  in aux ();
-  Format.pp_close_box fmt ();
+(* Capatibility with Menhir revised API *)
+let token lexbuf () =
+  let token = tokenize lexbuf in
+  let start, end_ = Sedlexing.lexing_positions lexbuf in
+  let out = (token, start, end_) in
+  Log.debug (fun m -> m "%a" pp out ~header:"lexer");
+  out

@@ -11,7 +11,7 @@ type construct
   | If
   | Paren
   | Lambda
-[@@deriving show]
+[@@deriving show { with_path = false }]
 
 type context =
   { construct: construct;
@@ -56,11 +56,10 @@ let peek_body state =
 
 let rec token state =
   let tok, start, _ = peek state in
-
-  Format.fprintf Format.std_formatter "%a" Tokens.pp tok;
-  Format.pp_print_newline Format.std_formatter ();
-  Format.pp_print_list pp_context Format.std_formatter state.stack;
-  Format.pp_print_newline Format.std_formatter ();
+  let log_push construct =
+    Log.debug (fun m -> m "<%a> push %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
+  let log_pop construct =
+    Log.debug (fun m -> m "<%a> pop %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
 
   let line = start.pos_lnum in
   let col = column start in
@@ -75,6 +74,7 @@ let rec token state =
 
   (* Token offside of block, pop block context *)
   | _tok, { construct=Block; offside; _ } :: tl when col < offside ->
+      log_pop Block;
       state.stack <- tl;
       token state
 
@@ -83,10 +83,12 @@ let rec token state =
      _tok
   *)
   | _tok, { construct=Let; offside; _ } :: tl when col = offside ->
+      log_pop Let; log_push Block;
       state.stack <- { construct=Block; line; offside } :: tl;
       internal_token IN
 
   | LET, { construct=Block; offside; _ } :: _ when col = offside ->
+      log_push Let;
       state.stack <- { construct=Let; line; offside=col } :: state.stack;
       next state
 
@@ -94,6 +96,7 @@ let rec token state =
       let eq_tok = next state in
       let lookahead_line, lookahead_col = peek_body state in
       if lookahead_line = line || lookahead_col = offside + indent_size then begin
+        log_push Block;
         let block = { construct=Block; line=lookahead_line; offside=lookahead_col } in
         state.stack <- block :: state.stack;
         eq_tok
@@ -101,6 +104,7 @@ let rec token state =
         failwith "Unexpected indentation"
 
   | IF, { construct=Block; offside; _} :: _ when col = offside ->
+      log_push If;
       state.stack <- { construct=If; line; offside=col } :: state.stack;
       next state
 
@@ -108,6 +112,7 @@ let rec token state =
       let then_tok = next state in
       let lookahead_line, lookahead_col = peek_body state in
       if lookahead_line = line || lookahead_col = offside + indent_size then begin
+        log_push Block;
         state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: state.stack;
         then_tok
       end else
@@ -117,20 +122,24 @@ let rec token state =
       let else_tok = next state in
       let lookahead_line, lookahead_col = peek_body state in
       if lookahead_line = line || lookahead_col = offside + indent_size then begin
+        log_pop If; log_push Block;
         state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: tl;
         else_tok
       end else
         failwith "Unexpected indentation"
 
   | L_PAREN, { construct=Block; offside; _ } :: _ when col = offside ->
+      log_push Paren;
       state.stack <- { construct=Paren; line; offside } :: state.stack;
       next state
 
   | R_PAREN, { construct=Paren; line=paren_line; offside } :: tl when line = paren_line ->
       let r_paren_tok = next state in
       let (lookahead_tok, lookahead_start, _) = peek state in
+      log_pop Paren;
       begin match lookahead_tok with
       | ARROW when line = lookahead_start.pos_lnum ->
+          log_push Lambda;
           state.stack <- { construct=Lambda; line=paren_line; offside } :: tl
       | _ -> state.stack <- tl
       end;
@@ -140,6 +149,7 @@ let rec token state =
       let arrow_tok = next state in
       let lookahead_line, lookahead_col = peek_body state in
       if lookahead_line = line || lookahead_col = offside + indent_size then begin
+        log_pop Lambda; log_push Block;
         state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: tl;
         arrow_tok
       end else

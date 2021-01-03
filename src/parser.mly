@@ -41,12 +41,16 @@
 
 %{
   open Ast
+  open Helpers
 %}
 
 %start <expr> prog
 %%
 
-prog: e = expr; EOF { e }
+prog: e = expr; EOF {
+  Log.debug (fun m -> m "%a" pp_expr e ~header:"parser");
+  e
+}
 
 expr:
   | e = expr_not_id { e }
