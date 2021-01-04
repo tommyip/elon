@@ -21,6 +21,8 @@ type context =
 [@@deriving show]
 type state =
   { token: Lexer.gen;
+    mutable line: int;
+    mutable indent: int;
     mutable stack: context list;
     mutable peekbuf: Lexer.t option;
     mutable delaybuf: Lexer.t option;
@@ -28,7 +30,13 @@ type state =
 
 let init token =
   let stack = { construct=Block; line=1; offside=0 } :: [] in
-  { token; stack; peekbuf=None; delaybuf=None }
+  { token;
+    stack;
+    line=1;
+    indent=0;
+    peekbuf=None;
+    delaybuf=None;
+  }
 
 let peek state =
   match state.peekbuf with
@@ -60,9 +68,16 @@ let rec token state =
     Log.debug (fun m -> m "<%a> push %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
   let log_pop construct =
     Log.debug (fun m -> m "<%a> pop %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
+  let log_emit tok' =
+    Log.debug (fun m -> m "<%a> emit %a" Tokens.pp tok Tokens.pp tok' ~header:"preparser") in
 
   let line = start.pos_lnum in
   let col = column start in
+  if line <> state.line then begin
+    state.line <- line;
+    state.indent <- col
+  end;
+
   match tok, state.stack with
   | EOF, _ -> next state
 
@@ -85,6 +100,7 @@ let rec token state =
   | _tok, { construct=Let; offside; _ } :: tl when col = offside ->
       log_pop Let; log_push Block;
       state.stack <- { construct=Block; line; offside } :: tl;
+      log_emit IN;
       internal_token IN
 
   | LET, { construct=Block; offside; _ } :: _ when col = offside ->
@@ -137,19 +153,25 @@ let rec token state =
       else
         failwith "`else` not aligned with `if`"
 
-  | L_PAREN, { construct=Block; offside; _ } :: _ when col = offside ->
+  | L_PAREN, { construct=Block; _ } :: _ ->
       log_push Paren;
-      state.stack <- { construct=Paren; line; offside } :: state.stack;
+      state.stack <- { construct=Paren; line; offside=col } :: state.stack;
       next state
 
-  | R_PAREN, { construct=Paren; line=paren_line; offside } :: tl when line = paren_line ->
+  (* If a lambda expression, the function body is indented based on the line
+     start of the paren line.
+
+     let x = (a, b) =>
+       a + b
+  *)
+  | R_PAREN, { construct=Paren; line=paren_line; _ } :: tl when line = paren_line ->
       let r_paren_tok = next state in
       let (lookahead_tok, lookahead_start, _) = peek state in
       log_pop Paren;
       begin match lookahead_tok with
       | ARROW when line = lookahead_start.pos_lnum ->
           log_push Lambda;
-          state.stack <- { construct=Lambda; line=paren_line; offside } :: tl
+          state.stack <- { construct=Lambda; line=paren_line; offside=(state.indent + indent_size) } :: tl
       | _ -> state.stack <- tl
       end;
       r_paren_tok
@@ -157,7 +179,7 @@ let rec token state =
   | ARROW, { construct=Lambda; offside; _ } :: tl ->
       let arrow_tok = next state in
       let lookahead_line, lookahead_col = peek_body state in
-      if lookahead_line = line || lookahead_col = offside + indent_size then begin
+      if lookahead_line = line || lookahead_col = offside then begin
         log_pop Lambda; log_push Block;
         state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: tl;
         arrow_tok

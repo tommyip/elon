@@ -1,0 +1,2 @@
+(x, y) => (threshold) =>
+  x + y >= threshold

@@ -38,6 +38,7 @@
 %left "<" ">" "<=" ">="
 %left "+" "-"
 %left "*" "/"
+%nonassoc "("
 
 %{
   open Ast
@@ -64,6 +65,7 @@ expr_not_id:
   | "if"; cond = expr; "then"; consequent = expr; "else"; alternative = expr
     { Conditional { cond; consequent; alternative } }
   | params = parameter_list; "=>"; body = expr { Lambda { params; body } }
+  | fn = expr; "("; args = separated_list(",", expr); ")" { FnApplication { fn; args } }
 
 parameter_list:
   | "("; ")" { [] }
