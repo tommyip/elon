@@ -1,0 +1,5 @@
+(test
+  (name tests)
+  (libraries alcotest logs logs.fmt fmt.tty elon)
+  (deps
+    (source_tree syntax)))

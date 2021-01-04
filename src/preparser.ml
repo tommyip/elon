@@ -11,7 +11,7 @@ type construct
   | If
   | Paren
   | Lambda
-[@@deriving show { with_path = false }]
+[@@deriving eq, show { with_path = false }]
 
 type context =
   { construct: construct;
@@ -118,15 +118,24 @@ let rec token state =
       end else
         failwith "Unexpected indentation"
 
-  | ELSE, { construct=If; line=if_line; offside } :: tl when col = offside || line = if_line ->
-      let else_tok = next state in
-      let lookahead_line, lookahead_col = peek_body state in
-      if lookahead_line = line || lookahead_col = offside + indent_size then begin
-        log_pop If; log_push Block;
-        state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: tl;
-        else_tok
-      end else
-        failwith "Unexpected indentation"
+  (* Close all context up til If *)
+  | ELSE, { construct; _ } :: tl when not (equal_construct construct If) ->
+      log_pop construct;
+      state.stack <- tl;
+      token state
+
+  | ELSE, { construct=If; line=if_line; offside } :: tl ->
+      if line = if_line || col = offside then
+        let else_tok = next state in
+        let lookahead_line, lookahead_col = peek_body state in
+        if lookahead_line = line || lookahead_col = offside + indent_size then begin
+          log_pop If; log_push Block;
+          state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: tl;
+          else_tok
+        end else
+          failwith "Unexpected indentation"
+      else
+        failwith "`else` not aligned with `if`"
 
   | L_PAREN, { construct=Block; offside; _ } :: _ when col = offside ->
       log_push Paren;

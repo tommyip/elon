@@ -33,7 +33,7 @@ type t
 
   (* Artificial tokens to be injected by the preparser *)
   | IN
-  [@@deriving show { with_path = false }]
+  [@@deriving show { with_path = false }, eq]
 
 (* Menhir looks for [Module.token] type *)
 type token = t

@@ -2,7 +2,7 @@
   (name elon)
   (libraries sedlex menhirLib containers containers-data uuseg.string logs)
   (preprocess
-    (pps sedlex.ppx ppx_deriving.show))
+    (pps sedlex.ppx ppx_deriving.show ppx_deriving.eq))
   (flags (:standard -warn-error -A)))
 
 (menhir
