@@ -21,9 +21,9 @@ type context =
 [@@deriving show]
 type state =
   { token: Lexer.gen;
-    mutable line: int;
-    mutable indent: int;
     mutable stack: context list;
+    mutable indent: int;
+    mutable prev_line: int;
     mutable peekbuf: Lexer.t option;
     mutable delaybuf: Lexer.t option;
   }
@@ -32,8 +32,8 @@ let init token =
   let stack = { construct=Block; line=1; offside=0 } :: [] in
   { token;
     stack;
-    line=1;
     indent=0;
+    prev_line=0;
     peekbuf=None;
     delaybuf=None;
   }
@@ -62,21 +62,37 @@ let peek_body state =
   let _, lookahead_start, _ = peek state in
   (lookahead_start.pos_lnum, column lookahead_start)
 
+let is_binop token =
+  match token with
+  | PLUS | MINUS | TIMES | SLASH | EQ | BANG_EQ | L_ANGLE_BRACKET
+  | R_ANGLE_BRACKET | LT_EQ | GT_EQ -> true
+  | _ -> false
+
 let rec token state =
   let tok, start, _ = peek state in
-  let log_push construct =
-    Log.debug (fun m -> m "<%a> push %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
-  let log_pop construct =
-    Log.debug (fun m -> m "<%a> pop %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
-  let log_emit tok' =
-    Log.debug (fun m -> m "<%a> emit %a" Tokens.pp tok Tokens.pp tok' ~header:"preparser") in
+  let log_push construct = Log.debug (fun m ->
+    m "<%a> push %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
+  let log_pop construct = Log.debug (fun m ->
+    m "<%a> pop %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
+  let log_emit tok' = Log.debug (fun m ->
+    m "<%a> emit %a" Tokens.pp tok Tokens.pp tok' ~header:"preparser") in
 
+  let deferred_token =
+    let prev_line = state.prev_line in
+    fun state ->
+      state.prev_line <- prev_line;
+      token state
+  in
   let line = start.pos_lnum in
   let col = column start in
-  if line <> state.line then begin
-    state.line <- line;
-    state.indent <- col
-  end;
+  let line_start =
+    if line <> state.prev_line then begin
+      state.prev_line <- line;
+      state.indent <- col;
+      true
+    end else
+      false
+  in
 
   match tok, state.stack with
   | EOF, _ -> next state
@@ -91,7 +107,7 @@ let rec token state =
   | _tok, { construct=Block; offside; _ } :: tl when col < offside ->
       log_pop Block;
       state.stack <- tl;
-      token state
+      deferred_token state
 
   (* Token on offside line of let
      let x = ...
@@ -138,7 +154,7 @@ let rec token state =
   | ELSE, { construct; _ } :: tl when not (equal_construct construct If) ->
       log_pop construct;
       state.stack <- tl;
-      token state
+      deferred_token state
 
   | ELSE, { construct=If; line=if_line; offside } :: tl ->
       if line = if_line || col = offside then
@@ -191,9 +207,13 @@ let rec token state =
     when line = block_line && col = offside ->
       next state
 
-  (* Non-offside token *)
-  | _tok, { line=construct_line; offside; _ } :: _
-    when line = construct_line && col > offside ->
+  | tok, { construct=Block; offside; _ } :: _
+    when line_start && is_binop tok && col = offside + indent_size ->
+      next state
+
+  (* Not the first token of the line so no need to consider whether it
+     is offside. *)
+  | _tok, _ when not line_start ->
       next state
 
   | _ -> failwith "Unexpected token"

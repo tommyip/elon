@@ -82,6 +82,16 @@ let test_lambda_unexpected_indent () =
   check_raises "Lambda body under indented" (Failure "Unexpected indentation")
     @@ fun () -> ignore (preparse "syntax/lambda_unexpected_indent.elon")
 
+let test_expr_multiline () =
+  check token_stream "Pass through"
+    [IDENT "a"; PLUS; IDENT "b"; MINUS; IDENT "c"; TIMES; IDENT "d"; SLASH;
+     IDENT "e"; EQ; IDENT "f"; GT_EQ; IDENT "g"]
+    (preparse "syntax/expr_multiline.elon")
+
+let test_expr_unexpected_indent () =
+  check_raises "Multiline expr under indented" (Failure "Unexpected token")
+    @@ fun () -> ignore (preparse "syntax/expr_unexpected_indent.elon")
+
 let test_suite = ("preparser", [
   test_case "let inline" `Quick test_let_inline;
   test_case "let multiline" `Quick test_let_multiline;
@@ -94,4 +104,6 @@ let test_suite = ("preparser", [
   test_case "lambda multiline" `Quick test_lambda_multiline;
   test_case "lambda unexpected indent" `Quick test_lambda_unexpected_indent;
   test_case "lambda undentation" `Quick test_lambda_undentation;
+  test_case "expr multiline" `Quick test_expr_multiline;
+  test_case "expr unexpected indent" `Quick test_expr_unexpected_indent;
 ])
