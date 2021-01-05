@@ -19,6 +19,7 @@ type context =
     offside: int;
   }
 [@@deriving show]
+
 type state =
   { token: Lexer.gen;
     mutable stack: context list;
@@ -26,16 +27,6 @@ type state =
     mutable prev_line: int;
     mutable peekbuf: Lexer.t option;
     mutable delaybuf: Lexer.t option;
-  }
-
-let init token =
-  let stack = { construct=Block; line=1; offside=0 } :: [] in
-  { token;
-    stack;
-    indent=0;
-    prev_line=0;
-    peekbuf=None;
-    delaybuf=None;
   }
 
 let peek state =
@@ -219,5 +210,15 @@ let rec token state =
   | _ -> failwith "Unexpected token"
 
 let filter gen =
-  let state = init gen in
+  let state =
+    { token=gen;
+      stack=[];
+      indent=0;
+      prev_line=0;
+      peekbuf=None;
+      delaybuf=None;
+    }
+  in
+  let _, start, _ = peek state in
+  state.stack <- [{ construct=Block; line=start.pos_lnum; offside=0 }];
   fun () -> token state

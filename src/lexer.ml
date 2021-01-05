@@ -20,6 +20,7 @@ let ident = [%sedlex.regexp? (lowercase | uppercase | '_'), Star (lowercase | up
 
 let rec tokenize lexbuf =
   match%sedlex lexbuf with
+  | '#', Star (Compl '\n'), '\n' -> tokenize lexbuf
   | Plus (' ' | '\n') -> tokenize lexbuf
   | '(' -> L_PAREN
   | ')' -> R_PAREN
