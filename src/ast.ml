@@ -20,8 +20,13 @@ type literal
   | Char of string
   | String of string
 
+type typing =
+  { name: string;
+    params: typing list;
+  }
+
 type expr
-  = Let of { name: string; value: expr; result: expr }
+  = Let of { name: string; typing: typing option; value: expr; result: expr }
   | Conditional of { cond: expr; consequent: expr; alternative: expr }
   | Lambda of { params: string list; body: expr }
   | FnApplication of { fn: expr; args: expr list }
@@ -70,9 +75,14 @@ let rec pp_args_list fmt lst =
     ) lst;
     pp_close_box fmt ()
 
+and pp_binding fmt (name, typing, value) =
+  match typing with
+  | None -> fprintf fmt "[%s %a]" name pp_expr value
+  | Some { name=ty_name; _ } -> fprintf fmt "[%s : %s %a]" name ty_name pp_expr value
+
 and pp_expr fmt = function
-  | Let { name; value; result } ->
-    fprintf fmt "@[<hov 2>(let %s@;<1>%a@;<1>%a@,)@]" name pp_expr value pp_expr result
+  | Let { name; typing; value; result } ->
+    fprintf fmt "@[<hov 2>(let %a@;<1>%a@,)@]" pp_binding (name, typing, value) pp_expr result
   | Conditional { cond; consequent; alternative } ->
     fprintf fmt "@[<hov 2>(if %a@;<1>@[<hv>%a@;<1>%a@]@,)@]"
       pp_expr cond pp_expr consequent pp_expr alternative

@@ -18,7 +18,6 @@ type context =
     line: int;
     offside: int;
   }
-[@@deriving show]
 
 type state =
   { token: Lexer.gen;
@@ -176,14 +175,14 @@ let rec token state =
       let (lookahead_tok, lookahead_start, _) = peek state in
       log_pop Paren;
       begin match lookahead_tok with
-      | ARROW when line = lookahead_start.pos_lnum ->
+      | FAT_ARROW when line = lookahead_start.pos_lnum ->
           log_push Lambda;
           state.stack <- { construct=Lambda; line=paren_line; offside=(state.indent + indent_size) } :: tl
       | _ -> state.stack <- tl
       end;
       r_paren_tok
 
-  | ARROW, { construct=Lambda; offside; _ } :: tl ->
+  | FAT_ARROW, { construct=Lambda; offside; _ } :: tl ->
       let arrow_tok = next state in
       let lookahead_line, lookahead_col = peek_body state in
       if lookahead_line = line || lookahead_col = offside then begin

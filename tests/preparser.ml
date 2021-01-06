@@ -60,21 +60,21 @@ let test_if_unexpected_indent () =
 
 let test_lambda_inline () =
   check token_stream "Pass through"
-    [L_PAREN; R_PAREN; ARROW; INT (Int64.of_int 42)]
+    [L_PAREN; R_PAREN; FAT_ARROW; INT (Int64.of_int 42)]
     (preparse "syntax/lambda_inline.elon")
 
 let test_lambda_multiline () =
   check token_stream "Pass through"
-    [L_PAREN; R_PAREN; ARROW;
-     L_PAREN; IDENT "a"; R_PAREN; ARROW;
-     L_PAREN; IDENT "b"; R_PAREN; ARROW;
-     L_PAREN; R_PAREN; ARROW; IDENT "a"; PLUS; IDENT "b"]
+    [L_PAREN; R_PAREN; FAT_ARROW;
+     L_PAREN; IDENT "a"; R_PAREN; FAT_ARROW;
+     L_PAREN; IDENT "b"; R_PAREN; FAT_ARROW;
+     L_PAREN; R_PAREN; FAT_ARROW; IDENT "a"; PLUS; IDENT "b"]
     (preparse "syntax/lambda_multiline.elon")
 
 let test_lambda_undentation () =
   check token_stream "Pass through"
-    [L_PAREN; IDENT "x"; COMMA; IDENT "y"; R_PAREN; ARROW;
-     L_PAREN; IDENT "threshold"; R_PAREN; ARROW;
+    [L_PAREN; IDENT "x"; COMMA; IDENT "y"; R_PAREN; FAT_ARROW;
+     L_PAREN; IDENT "threshold"; R_PAREN; FAT_ARROW;
      IDENT "x"; PLUS; IDENT "y"; GT_EQ; IDENT "threshold"]
     (preparse "syntax/lambda_undentation.elon")
 

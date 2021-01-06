@@ -14,7 +14,8 @@
 %token MINUS "-"
 %token TIMES "*"
 %token SLASH "/"
-%token ARROW "=>"
+%token ARROW "->"
+%token FAT_ARROW "=>"
 
 %token LET "let"
 %token IF "if"
@@ -61,11 +62,15 @@ expr_not_id:
   | e = primary { e }
   | e = paranthesize_expr { e }
   | left = expr; op = binop; right = expr { BinOp { op; left; right } }
-  | "let"; name = IDENT; EQ; value = expr; IN; result = expr { Let { name; value; result } }
+  | "let"; name = IDENT; typing = let_typing?; EQ; value = expr; IN; result = expr
+    { Let { name; typing; value; result } }
   | "if"; cond = expr; "then"; consequent = expr; "else"; alternative = expr
     { Conditional { cond; consequent; alternative } }
   | params = parameter_list; "=>"; body = expr { Lambda { params; body } }
   | fn = expr; "("; args = separated_list(",", expr); ")" { FnApplication { fn; args } }
+
+let_typing: ":" typing = typing { typing }
+typing: name = IDENT { { name; params=[] } }
 
 parameter_list:
   | "("; ")" { [] }

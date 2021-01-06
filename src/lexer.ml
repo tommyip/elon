@@ -38,7 +38,8 @@ let rec tokenize lexbuf =
   | '-' -> MINUS
   | '*' -> TIMES
   | '/' -> SLASH
-  | "=>" -> ARROW
+  | "->" -> ARROW
+  | "=>" -> FAT_ARROW
   | "true" -> BOOL true
   | "false" -> BOOL false
   | "let" -> LET

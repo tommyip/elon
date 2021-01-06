@@ -16,6 +16,7 @@ type t
   | TIMES
   | SLASH
   | ARROW
+  | FAT_ARROW
 
   | LET
   | IF
