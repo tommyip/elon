@@ -24,10 +24,12 @@ let rec tokenize lexbuf =
   | Plus (' ' | '\n') -> tokenize lexbuf
   | '(' -> L_PAREN
   | ')' -> R_PAREN
-  | '{' -> L_BRACKET
-  | '}' -> R_BRACKET
-  | '<' -> L_ANGLE_BRACKET
-  | '>' -> R_ANGLE_BRACKET
+  | '{' -> L_BRACE
+  | '}' -> R_BRACE
+  | '[' -> L_BRACKET
+  | ']' -> R_BRACKET
+  | '<' -> L_CHEVRON
+  | '>' -> R_CHEVRON
   | ',' -> COMMA
   | ':' -> COLON
   | '=' -> EQ

@@ -33,7 +33,7 @@ let test_let_multiline () =
   check token_stream "Insert IN"
     [LET; IDENT "x"; EQ; LET; IDENT "y"; EQ; INT (Int64.of_int 42); IN;
      IDENT "y"; PLUS; INT (Int64.of_int 1337); IN;
-     IDENT "x"; R_ANGLE_BRACKET; INT (Int64.of_int 9000)]
+     IDENT "x"; R_CHEVRON; INT (Int64.of_int 9000)]
     (preparse "syntax/let_multiline.elon")
 
 let test_unexpected_indent () =
@@ -92,6 +92,25 @@ let test_expr_unexpected_indent () =
   check_raises "Multiline expr under indented" (Failure "Unexpected token")
     @@ fun () -> ignore (preparse "syntax/expr_unexpected_indent.elon")
 
+let test_list_inline () =
+  check token_stream "Pass through"
+    [L_BRACKET; IDENT "a"; COMMA; IDENT "b"; COMMA; IDENT "c"; R_BRACKET]
+    (preparse "syntax/list_inline.elon")
+
+let test_list_multiline () =
+  check token_stream "Pass through"
+    [L_BRACKET; IDENT "a"; COMMA; IDENT "b"; COMMA; IDENT "c"; COMMA;
+     IDENT "d"; COMMA; IDENT "e"; R_BRACKET]
+    (preparse "syntax/list_multiline.elon")
+
+let test_list_indented_multiline () =
+  check token_stream "Pass through"
+    [L_BRACKET; IDENT "a"; COMMA; IDENT "b"; COMMA; IDENT "c"; COMMA;
+     IDENT "d"; COMMA; IDENT "e"; R_BRACKET]
+    (preparse "syntax/list_indented_multiline.elon")
+
+let test_list_unexpected_indent () = ()
+
 let test_suite = ("preparser", [
   test_case "let inline" `Quick test_let_inline;
   test_case "let multiline" `Quick test_let_multiline;
@@ -106,4 +125,7 @@ let test_suite = ("preparser", [
   test_case "lambda undentation" `Quick test_lambda_undentation;
   test_case "expr multiline" `Quick test_expr_multiline;
   test_case "expr unexpected indent" `Quick test_expr_unexpected_indent;
+  test_case "list inline" `Quick test_list_inline;
+  test_case "list multiline" `Quick test_list_multiline;
+  test_case "list indented multiline" `Quick test_list_indented_multiline;
 ])

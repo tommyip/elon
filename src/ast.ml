@@ -33,6 +33,7 @@ type expr
   | BinOp of { op: bin_op; left: expr; right: expr }
   | Literal of literal
   | Ident of string
+  | List of expr list
 
 let pp_bin_op fmt bin_op =
   let sym = match bin_op with
@@ -77,20 +78,28 @@ let rec pp_args_list fmt lst =
 
 and pp_binding fmt (name, typing, value) =
   match typing with
-  | None -> fprintf fmt "[%s %a]" name pp_expr value
-  | Some { name=ty_name; _ } -> fprintf fmt "[%s : %s %a]" name ty_name pp_expr value
+  | None -> fprintf fmt "@[<hov 1>[%s@ %a@,]@]" name pp_expr value
+  | Some { name=ty_name; _ } -> fprintf fmt "@[<hov 1>[%s : %s@ %a@,]@]" name ty_name pp_expr value
 
 and pp_expr fmt = function
   | Let { name; typing; value; result } ->
-    fprintf fmt "@[<hov 2>(let %a@;<1>%a@,)@]" pp_binding (name, typing, value) pp_expr result
+    fprintf fmt "@[<hov 2>(let %a@ %a@,)@]" pp_binding (name, typing, value) pp_expr result
   | Conditional { cond; consequent; alternative } ->
-    fprintf fmt "@[<hov 2>(if %a@;<1>@[<hv>%a@;<1>%a@]@,)@]"
+    fprintf fmt "@[<hov 2>(if %a@ @[<hv>%a@ %a@]@,)@]"
       pp_expr cond pp_expr consequent pp_expr alternative
   | Lambda { params; body } ->
-    fprintf fmt "@[<hov 2>(λ %a@;<1>%a@,)@]" pp_string_list params pp_expr body
+    fprintf fmt "@[<hov 2>(lambda %a@ %a@,)@]" pp_string_list params pp_expr body
   | FnApplication { fn; args } ->
     fprintf fmt "@[<hov 2>(%a%a@,)@]" pp_expr fn pp_args_list args
   | BinOp { op; left; right } ->
-    fprintf fmt "@[<hov 2>(%a@;<1>%a@;<1>%a@,)@]" pp_bin_op op pp_expr left pp_expr right
+    fprintf fmt "@[<hov 2>(%a@ %a@ %a@,)@]" pp_bin_op op pp_expr left pp_expr right
   | Literal lit -> pp_literal fmt lit
   | Ident id -> pp_print_string fmt id
+  | List lst ->
+      pp_open_hovbox fmt 0;
+      pp_print_char fmt '[';
+      CCList.pp
+        ~pp_sep:(fun fmt () -> pp_print_char fmt ','; pp_print_break fmt 1 1)
+        pp_expr fmt lst;
+      pp_print_char fmt ']';
+      pp_close_box fmt ()

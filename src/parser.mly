@@ -1,9 +1,11 @@
 %token L_PAREN "("
 %token R_PAREN ")"
-%token L_BRACKET "{"
-%token R_BRACKET "}"
-%token L_ANGLE_BRACKET "<"
-%token R_ANGLE_BRACKET ">"
+%token L_BRACE "{"
+%token R_BRACE "}"
+%token L_BRACKET "["
+%token R_BRACKET "]"
+%token L_CHEVRON "<"
+%token R_CHEVRON ">"
 %token COMMA ","
 %token COLON ":"
 %token EQ "="
@@ -68,6 +70,7 @@ expr_not_id:
     { Conditional { cond; consequent; alternative } }
   | params = parameter_list; "=>"; body = expr { Lambda { params; body } }
   | fn = expr; "("; args = separated_list(",", expr); ")" { FnApplication { fn; args } }
+  | "["; lst = separated_list(",", expr); "]" { List lst }
 
 let_typing: ":" typing = typing { typing }
 typing: name = IDENT { { name; params=[] } }
