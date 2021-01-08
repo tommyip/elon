@@ -15,6 +15,7 @@ type brackets
 type construct
   = Block
   | Let
+  | Typing
   | If
   | Brackets of brackets
   | Lambda
@@ -65,31 +66,26 @@ let is_binop token =
   | R_CHEVRON | LT_EQ | GT_EQ -> true
   | _ -> false
 
-let is_brackets construct =
-  match construct with
-  | Brackets _ -> true
-  | _ -> false
+module Bracket = struct
+  let is_construct = function Brackets _ -> true | _ -> false
+  let type_ = function
+    | L_PAREN -> Some Round
+    | L_BRACE -> Some Curly
+    | L_BRACKET -> Some Square
+    | _ -> None
+  let is_open = Fun.compose type_ Option.is_some
+  let is_close = function
+    | R_PAREN | R_BRACE | R_BRACKET -> true
+    | _ -> false
+  let close_of ~type_ token =
+    match type_, token with
+    | Round, R_PAREN
+    | Curly, R_BRACE
+    | Square, R_BRACKET -> true
+    | _ -> false
+end
 
-let bracket_type token =
-  match token with
-  | L_PAREN -> Some Round
-  | L_BRACE -> Some Curly
-  | L_BRACKET -> Some Square
-  | _ -> None
-
-let is_open_bracket token = Option.is_some (bracket_type token)
-
-let is_close_bracket token =
-  match token with
-  | R_PAREN | R_BRACE | R_BRACKET -> true
-  | _ -> false
-
-let is_close_bracket_of bracket_type token =
-  match token, bracket_type with
-  | R_PAREN, Round
-  | R_BRACE, Curly
-  | R_BRACKET, Square -> true
-  | _ -> false
+let is_typing = function Typing -> true | _ -> false
 
 let rec token state =
   let tok, start, _ = peek state in
@@ -148,6 +144,11 @@ let rec token state =
       state.stack <- { construct=Let; line; offside=col } :: state.stack;
       next state
 
+  | EQ, { construct=Typing; _ } :: tl ->
+      log_pop Typing;
+      state.stack <- tl;
+      deferred_token state
+
   | EQ, { construct=Let; line=let_line; offside } :: _ when line = let_line ->
       let eq_tok = next state in
       let lookahead_line, lookahead_col = peek_pos state in
@@ -158,6 +159,16 @@ let rec token state =
         eq_tok
       end else
         failwith "Unexpected indentation"
+
+  | COLON, { construct=Let; line=let_line; _ } :: _ when line = let_line ->
+      let colon_tok = next state in
+      log_push Typing col;
+      let lookahead_line, lookahead_col = peek_pos state in
+      if lookahead_line = line then begin
+        state.stack <- { construct=Typing; line; offside=lookahead_col } :: state.stack;
+        colon_tok
+      end else
+        failwith "Type annotation should appear on the same line as `:`"
 
   | IF, _ ->
       log_push If col;
@@ -193,13 +204,13 @@ let rec token state =
       else
         failwith "`else` not aligned with `if`"
 
-  | tok, _ when is_open_bracket tok ->
+  | tok, _ when Bracket.is_open tok ->
       let bracket_tok = next state in
       let lookahead_line, lookahead_col = peek_pos state in
       if (lookahead_line = line && lookahead_col = col + 1) ||
         lookahead_col = state.indent + indent_size
       then begin
-        let brackets = Brackets (Option.get_exn (bracket_type tok)) in
+        let brackets = Brackets (Option.get_exn (Bracket.type_ tok)) in
         log_push brackets lookahead_col;
         let brackets = { construct=brackets; line; offside=lookahead_col } in
         log_push Block lookahead_col;
@@ -218,7 +229,7 @@ let rec token state =
         a + b
   *)
  | tok, { construct=(Brackets b) as brackets; line=paren_line; _ } :: tl
-    when is_close_bracket_of b tok && line = prev_line ->
+    when Bracket.close_of ~type_:b tok && line = prev_line ->
       let r_bracket_tok = next state in
       let (lookahead_tok, lookahead_start, _) = peek state in
       log_pop brackets;
@@ -241,12 +252,13 @@ let rec token state =
       end else
         failwith "Unexpected indentation"
 
-  (* When encounter a one of `)}]>,`, close all surrounding context uptil a bracket context.  *)
-  | tok, { construct; _ } :: tl when is_close_bracket tok && not (is_brackets construct) ->
+  (* When encounter a one of `)}],`, close all surrounding context uptil a bracket context.  *)
+  | tok, { construct; _ } :: tl when Bracket.is_close tok && not (Bracket.is_construct construct) ->
       log_pop construct;
       state.stack <- tl;
       deferred_token state
-  | COMMA, { construct; _ } :: tl when not (is_brackets construct) ->
+  | COMMA, { construct; _ } :: tl
+    when not ((Bracket.is_construct construct) || is_typing construct) ->
       log_pop construct;
       state.stack <- tl;
       deferred_token state

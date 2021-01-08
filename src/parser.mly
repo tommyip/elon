@@ -73,7 +73,9 @@ expr_not_id:
   | "["; lst = separated_list(",", expr); "]" { List lst }
 
 let_typing: ":" typing = typing { typing }
-typing: name = IDENT { { name; params=[] } }
+typing:
+  | name = IDENT { { name; params=[] } }
+  | name = IDENT; "<"; params = separated_nonempty_list(",", typing); ">" { { name; params } }
 
 parameter_list:
   | "("; ")" { [] }

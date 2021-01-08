@@ -57,6 +57,19 @@ let pp_literal fmt = function
   | Char c -> fprintf fmt "'%s'" c
   | String s -> fprintf fmt "\"%s\"" s
 
+let pp_list ~l ~r fmt pp lst =
+    pp_open_hovbox fmt 1;
+    pp_print_char fmt l;
+    CCList.pp ~pp_sep:(fun fmt () -> pp_print_char fmt ','; pp_print_break fmt 1 0) pp fmt lst;
+    pp_print_cut fmt ();
+    pp_print_char fmt r;
+    pp_close_box fmt ()
+
+let rec pp_typing fmt { name; params } =
+  pp_print_string fmt name;
+  if List.length params > 0 then
+    pp_list ~l:'<' ~r:'>' fmt pp_typing params
+
 let pp_string_list fmt lst =
   pp_print_char fmt '(';
   List.iteri (fun i s ->
@@ -79,7 +92,7 @@ let rec pp_args_list fmt lst =
 and pp_binding fmt (name, typing, value) =
   match typing with
   | None -> fprintf fmt "@[<hov 1>[%s@ %a@,]@]" name pp_expr value
-  | Some { name=ty_name; _ } -> fprintf fmt "@[<hov 1>[%s : %s@ %a@,]@]" name ty_name pp_expr value
+  | Some typing -> fprintf fmt "@[<hov 1>[%s : %a@ %a@,]@]" name pp_typing typing pp_expr value
 
 and pp_expr fmt = function
   | Let { name; typing; value; result } ->
@@ -95,11 +108,4 @@ and pp_expr fmt = function
     fprintf fmt "@[<hov 2>(%a@ %a@ %a@,)@]" pp_bin_op op pp_expr left pp_expr right
   | Literal lit -> pp_literal fmt lit
   | Ident id -> pp_print_string fmt id
-  | List lst ->
-      pp_open_hovbox fmt 0;
-      pp_print_char fmt '[';
-      CCList.pp
-        ~pp_sep:(fun fmt () -> pp_print_char fmt ','; pp_print_break fmt 1 1)
-        pp_expr fmt lst;
-      pp_print_char fmt ']';
-      pp_close_box fmt ()
+  | List lst -> pp_list ~l:'[' ~r:']' fmt pp_expr lst

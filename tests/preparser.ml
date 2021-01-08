@@ -109,7 +109,16 @@ let test_list_indented_multiline () =
      IDENT "d"; COMMA; IDENT "e"; R_BRACKET]
     (preparse "syntax/list_indented_multiline.elon")
 
-let test_list_unexpected_indent () = ()
+let test_list_unexpected_indent () =
+  check_raises "List element under indented" (Failure "Unexpected indentation")
+    @@ fun () -> ignore (preparse "syntax/list_unexpected_indent.elon")
+
+let test_typing () =
+  check token_stream "Pass through"
+    [LET; IDENT "x"; COLON; IDENT "list"; L_CHEVRON; IDENT "string";
+     COMMA; IDENT "tuple"; L_CHEVRON; IDENT "int"; COMMA; IDENT "float";
+     R_CHEVRON; R_CHEVRON; EQ; L_BRACKET; R_BRACKET; IN; IDENT "x"]
+    (preparse "syntax/typing.elon")
 
 let test_suite = ("preparser", [
   test_case "let inline" `Quick test_let_inline;
@@ -128,4 +137,6 @@ let test_suite = ("preparser", [
   test_case "list inline" `Quick test_list_inline;
   test_case "list multiline" `Quick test_list_multiline;
   test_case "list indented multiline" `Quick test_list_indented_multiline;
+  test_case "list unexpected indent" `Quick test_list_unexpected_indent;
+  test_case "typing" `Quick test_typing;
 ])
