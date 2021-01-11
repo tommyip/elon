@@ -16,6 +16,7 @@ type construct
   = Block
   | Let
   | Typing
+  | TypeParam
   | If
   | Brackets of brackets
   | Lambda
@@ -25,6 +26,7 @@ type context =
   { construct: construct;
     line: int;
     offside: int;
+    line_indent: int;
   }
 
 type state =
@@ -85,7 +87,7 @@ module Bracket = struct
     | _ -> false
 end
 
-let is_typing = function Typing -> true | _ -> false
+let is_type_param = function TypeParam -> true | _ -> false
 
 let rec token state =
   let tok, start, _ = peek state in
@@ -93,8 +95,6 @@ let rec token state =
     m "<%a> push %a context (offside: %d)" Tokens.pp tok pp_construct construct offside ~header:"preparser") in
   let log_pop construct = Log.debug (fun m ->
     m "<%a> pop %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
-  let log_emit tok' = Log.debug (fun m ->
-    m "<%a> emit %a" Tokens.pp tok Tokens.pp tok' ~header:"preparser") in
 
   let prev_line = state.prev_line in
   let deferred_token state = state.prev_line <- prev_line; token state in
@@ -108,6 +108,12 @@ let rec token state =
     end else
       false
   in
+  let line_indent =
+    if line_start then col
+    else
+      let { line_indent; _ } = List.hd state.stack in
+      line_indent
+  in
 
   match tok, state.stack with
   | EOF, [_] -> next state
@@ -118,7 +124,7 @@ let rec token state =
       deferred_token state
 
   (* Token on offside line of a block context, except the first token of said block *)
-  | _tok, { construct=Block; line=block_line; offside } :: _
+  | _tok, { construct=Block; line=block_line; offside; _ } :: _
     when line > block_line && col = offside ->
       (* TODO implement expr sequence *)
       failwith "Not implemented"
@@ -135,13 +141,12 @@ let rec token state =
   *)
   | _tok, { construct=Let; offside; _ } :: tl when col = offside ->
       log_pop Let; log_push Block offside;
-      state.stack <- { construct=Block; line; offside } :: tl;
-      log_emit IN;
+      state.stack <- { construct=Block; line; offside; line_indent } :: tl;
       internal_token IN
 
   | LET, { construct=Block; offside; _ } :: _ when col = offside ->
       log_push Let col;
-      state.stack <- { construct=Let; line; offside=col } :: state.stack;
+      state.stack <- { construct=Let; line; offside=col; line_indent } :: state.stack;
       next state
 
   | EQ, { construct=Typing; _ } :: tl ->
@@ -149,38 +154,40 @@ let rec token state =
       state.stack <- tl;
       deferred_token state
 
-  | EQ, { construct=Let; line=let_line; offside } :: _ when line = let_line ->
+  | EQ, { construct=Let; line=let_line; offside; _ } :: _ when line = let_line ->
       let eq_tok = next state in
       let lookahead_line, lookahead_col = peek_pos state in
       if lookahead_line = line || lookahead_col = offside + indent_size then begin
+        let line_indent = if lookahead_line = line then line_indent else lookahead_col in
         log_push Block lookahead_col;
-        let block = { construct=Block; line=lookahead_line; offside=lookahead_col } in
+        let block = { construct=Block; line=lookahead_line; offside=lookahead_col; line_indent } in
         state.stack <- block :: state.stack;
         eq_tok
       end else
         failwith "Unexpected indentation"
 
-  | COLON, { construct=Let; line=let_line; _ } :: _ when line = let_line ->
+  | COLON, _ when line = prev_line ->
       let colon_tok = next state in
       log_push Typing col;
       let lookahead_line, lookahead_col = peek_pos state in
       if lookahead_line = line then begin
-        state.stack <- { construct=Typing; line; offside=lookahead_col } :: state.stack;
+        state.stack <- { construct=Typing; line; offside=lookahead_col; line_indent } :: state.stack;
         colon_tok
       end else
         failwith "Type annotation should appear on the same line as `:`"
 
   | IF, _ ->
       log_push If col;
-      state.stack <- { construct=If; line; offside=col } :: state.stack;
+      state.stack <- { construct=If; line; offside=col; line_indent } :: state.stack;
       next state
 
-  | THEN, { construct=If; line=if_line; offside } :: _ when line = if_line ->
+  | THEN, { construct=If; line=if_line; offside; _ } :: _ when line = if_line ->
       let then_tok = next state in
       let lookahead_line, lookahead_col = peek_pos state in
       if lookahead_line = line || lookahead_col = offside + indent_size then begin
+        let line_indent = if lookahead_line = line then line_indent else lookahead_col in
         log_push Block lookahead_col;
-        state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: state.stack;
+        state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col; line_indent } :: state.stack;
         then_tok
       end else
         failwith "Unexpected indentation"
@@ -191,13 +198,14 @@ let rec token state =
       state.stack <- tl;
       deferred_token state
 
-  | ELSE, { construct=If; line=if_line; offside } :: tl ->
+  | ELSE, { construct=If; line=if_line; offside; _ } :: tl ->
       if line = if_line || col = offside then
         let else_tok = next state in
         let lookahead_line, lookahead_col = peek_pos state in
         if lookahead_line = line || lookahead_col = offside + indent_size then begin
+          let line_indent = if lookahead_line = line then line_indent else lookahead_col in
           log_pop If; log_push Block lookahead_col;
-          state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: tl;
+          state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col; line_indent } :: tl;
           else_tok
         end else
           failwith "Unexpected indentation"
@@ -212,42 +220,63 @@ let rec token state =
       then begin
         let brackets = Brackets (Option.get_exn (Bracket.type_ tok)) in
         log_push brackets lookahead_col;
-        let brackets = { construct=brackets; line; offside=lookahead_col } in
+        let brackets = { construct=brackets; line; offside=lookahead_col; line_indent } in
+        let line_indent = if lookahead_line = line then line_indent else lookahead_col in
         log_push Block lookahead_col;
-        let block = { construct=Block; line=lookahead_line; offside=lookahead_col } in
+        let block = { construct=Block; line=lookahead_line; offside=lookahead_col; line_indent } in
         state.stack <- block :: brackets :: state.stack;
         bracket_tok
       end else
         failwith "Unexpected indentation"
 
-   (* The close bracket should be inline with the last token of the bracket group.
+  (* A close bracket should either be inline with the last item of the bracket
+     group or align with the open bracket on a newline.
 
-      If a lambda expression, the function body is indented based on the line
-      start of the paren line.
+     If a lambda expression, the function body is indented based on line
+     indentation of the open bracket.
 
-      let x = (a, b) =>
-        a + b
+     let x = (a, b) =>
+       a + b
   *)
- | tok, { construct=(Brackets b) as brackets; line=paren_line; _ } :: tl
-    when Bracket.close_of ~type_:b tok && line = prev_line ->
+  | tok, { construct=(Brackets b) as brackets; line=paren_line; line_indent; _ } :: tl
+    when Bracket.close_of ~type_:b tok && (line = prev_line || col = line_indent) ->
       let r_bracket_tok = next state in
       let (lookahead_tok, lookahead_start, _) = peek state in
       log_pop brackets;
       begin match b, lookahead_tok with
+      | Round, ARROW
       | Round, FAT_ARROW when line = lookahead_start.pos_lnum ->
-          let offside = state.indent + indent_size in
+          let offside = line_indent + indent_size in
           log_push Lambda offside;
-          state.stack <- { construct=Lambda; line=paren_line; offside } :: tl
+          state.stack <- { construct=Lambda; line=paren_line; offside; line_indent } :: tl
       | _ -> state.stack <- tl
       end;
       r_bracket_tok
+
+  | ARROW, _ ->
+      let arrow_tok = next state in
+      let lookahead_line, lookahead_col = peek_pos state in
+      if lookahead_line = line then begin
+        log_push Typing lookahead_col;
+        let typing = { construct=Typing; line; offside=lookahead_col; line_indent } in
+        state.stack <- typing :: state.stack;
+        arrow_tok
+      end else
+        failwith "Type annotation should appear on the same line as `->`"
+
+  (* () -> type => ... *)
+  | FAT_ARROW, { construct=Typing; _ } :: tl ->
+      log_pop Typing;
+      state.stack <- tl;
+      deferred_token state
 
   | FAT_ARROW, { construct=Lambda; offside; _ } :: tl ->
       let arrow_tok = next state in
       let lookahead_line, lookahead_col = peek_pos state in
       if lookahead_line = line || lookahead_col = offside then begin
+        let line_indent = if lookahead_line = line then line_indent else lookahead_col in
         log_pop Lambda; log_push Block lookahead_col;
-        state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: tl;
+        state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col; line_indent } :: tl;
         arrow_tok
       end else
         failwith "Unexpected indentation"
@@ -257,8 +286,25 @@ let rec token state =
       log_pop construct;
       state.stack <- tl;
       deferred_token state
+
+  | L_CHEVRON, { construct=Typing; _ } :: _
+  | L_CHEVRON, { construct=TypeParam; _ } :: _ ->
+      let chevron_tok = next state in
+      log_push TypeParam col;
+      let lookahead_line, lookahead_col = peek_pos state in
+      if lookahead_line = line then begin
+        state.stack <- { construct=TypeParam; line; offside=lookahead_col; line_indent } :: state.stack;
+        chevron_tok
+      end else
+        failwith "Unexpected line break"
+
+  | R_CHEVRON, { construct=TypeParam; _ } :: tl ->
+      log_pop TypeParam;
+      state.stack <- tl;
+      next state
+
   | COMMA, { construct; _ } :: tl
-    when not ((Bracket.is_construct construct) || is_typing construct) ->
+    when not ((Bracket.is_construct construct) || is_type_param construct)->
       log_pop construct;
       state.stack <- tl;
       deferred_token state
@@ -266,14 +312,15 @@ let rec token state =
       let comma_tok = next state in
       let lookahead_line, lookahead_col = peek_pos state in
       if lookahead_line = line || lookahead_col = offside then begin
+        let line_indent = if lookahead_line = line then line_indent else lookahead_col in
         log_push Block lookahead_col;
-        state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col } :: state.stack;
+        state.stack <- { construct=Block; line=lookahead_line; offside=lookahead_col; line_indent } :: state.stack;
         comma_tok
       end else
         failwith "Unexpected indentation"
 
   (* First token of block *)
-  | _tok, { construct=Block; line=block_line; offside } :: _
+  | _tok, { construct=Block; line=block_line; offside; _ } :: _
     when line = block_line && col = offside ->
       next state
 
@@ -300,7 +347,7 @@ let filter gen =
     }
   in
   let _, start, _ = peek state in
-  state.stack <- [{ construct=Block; line=start.pos_lnum; offside=0 }];
+  state.stack <- [{ construct=Block; line=start.pos_lnum; offside=0; line_indent=0 }];
   fun () ->
     let (tok, _, _) as token = token state in
     Log.debug (fun m -> m "emit %a" Tokens.pp tok ~header:"preparser");

@@ -1,0 +1,4 @@
+let f = (g: fn<int>, x: list<int>) -> tuple<int, float> =>
+  g(x)
+
+f

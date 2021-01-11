@@ -1,0 +1,16 @@
+let style1 = (x: int,
+              y: float) -> int =>
+  x
+
+let style2 = (
+  x: int,
+  y: float) -> int =>
+  x
+
+let style3 = (
+  x: int,
+  y: float
+) -> int =>
+  x
+
+f(42, 13.37)

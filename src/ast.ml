@@ -1,3 +1,7 @@
+(* The AST is pretty printed in s-expression format with type annotation
+   inspired by Typed Racket.
+*)
+
 open CCFormat
 
 type bin_op
@@ -28,12 +32,16 @@ type typing =
 type expr
   = Let of { name: string; typing: typing option; value: expr; result: expr }
   | Conditional of { cond: expr; consequent: expr; alternative: expr }
-  | Lambda of { params: string list; body: expr }
+  | Lambda of lambda
   | FnApplication of { fn: expr; args: expr list }
   | BinOp of { op: bin_op; left: expr; right: expr }
   | Literal of literal
   | Ident of string
   | List of expr list
+
+and lambda =
+  | Untyped of { params: string list; body: expr }
+  | Typed of { params: (string * typing) list; return: typing; body: expr }
 
 let pp_bin_op fmt bin_op =
   let sym = match bin_op with
@@ -70,23 +78,23 @@ let rec pp_typing fmt { name; params } =
   if List.length params > 0 then
     pp_list ~l:'<' ~r:'>' fmt pp_typing params
 
-let pp_string_list fmt lst =
-  pp_print_char fmt '(';
-  List.iteri (fun i s ->
-    if i > 0 then
-      pp_print_break fmt 1 0;
-    pp_print_string fmt s) lst;
-  pp_print_char fmt ')'
+let pp_typed_signature fmt (params, return) =
+  let pp_param fmt (name, typing) =
+    fprintf fmt "@[<hov 1>[%s : %a@,]@]" name pp_typing typing in
+  let pp_params fmt params =
+    params |> List.iter @@ fun param ->
+      pp_param fmt param;
+      pp_print_space fmt ()
+  in
+  fprintf fmt "@[<hov 1>(%a->@ %a@,)@]" pp_params params pp_typing return
 
-let rec pp_args_list fmt lst =
-  if List.length lst > 0 then
-    pp_print_break fmt 1 0;
+let rec pp_args fmt args =
+  if List.length args > 0 then
     pp_open_hvbox fmt 0;
-    List.iteri (fun i arg ->
-      if i > 0 then
-        pp_print_break fmt 1 0;
-      pp_expr fmt arg
-    ) lst;
+    CCList.pp
+      ~pp_start:pp_print_space
+      ~pp_sep:pp_print_space
+      pp_expr fmt args;
     pp_close_box fmt ()
 
 and pp_binding fmt (name, typing, value) =
@@ -100,10 +108,13 @@ and pp_expr fmt = function
   | Conditional { cond; consequent; alternative } ->
     fprintf fmt "@[<hov 2>(if %a@ @[<hv>%a@ %a@]@,)@]"
       pp_expr cond pp_expr consequent pp_expr alternative
-  | Lambda { params; body } ->
-    fprintf fmt "@[<hov 2>(lambda %a@ %a@,)@]" pp_string_list params pp_expr body
+  | Lambda (Untyped { params; body }) ->
+    fprintf fmt "@[<hov 2>(lambda @[<hov 1>(%a@,)@]@ %a@,)@]"
+      (CCList.pp ~pp_sep:pp_print_space pp_print_string) params pp_expr body
+  | Lambda (Typed { params; return; body  }) ->
+    fprintf fmt "@[<hov 2>(lambda %a@ %a@,)@]" pp_typed_signature (params, return) pp_expr body
   | FnApplication { fn; args } ->
-    fprintf fmt "@[<hov 2>(%a%a@,)@]" pp_expr fn pp_args_list args
+    fprintf fmt "@[<hov 2>(%a%a@,)@]" pp_expr fn pp_args args
   | BinOp { op; left; right } ->
     fprintf fmt "@[<hov 2>(%a@ %a@ %a@,)@]" pp_bin_op op pp_expr left pp_expr right
   | Literal lit -> pp_literal fmt lit

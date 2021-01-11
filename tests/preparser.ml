@@ -120,6 +120,26 @@ let test_typing () =
      R_CHEVRON; R_CHEVRON; EQ; L_BRACKET; R_BRACKET; IN; IDENT "x"]
     (preparse "syntax/typing.elon")
 
+let test_typed_lambda_inline () =
+  check token_stream "Pass through"
+  [LET; IDENT "f"; EQ; L_PAREN; IDENT "g"; COLON; IDENT "fn"; L_CHEVRON;
+   IDENT "int"; R_CHEVRON; COMMA; IDENT "x"; COLON; IDENT "list";
+   L_CHEVRON; IDENT "int"; R_CHEVRON; R_PAREN; ARROW; IDENT "tuple";
+   L_CHEVRON; IDENT "int"; COMMA; IDENT "float"; R_CHEVRON; FAT_ARROW;
+   IDENT "g"; L_PAREN; IDENT "x"; R_PAREN; IN; IDENT "f"]
+  (preparse "syntax/typed_lambda_inline.elon")
+
+let test_typed_lambda_multiline () =
+  let style name =
+    [LET; IDENT name; EQ; L_PAREN; IDENT "x"; COLON; IDENT "int"; COMMA;
+     IDENT "y"; COLON; IDENT "float"; R_PAREN; ARROW; IDENT "int"; FAT_ARROW;
+     IDENT "x"; IN]
+  in
+  check token_stream "Pass through"
+  (style "style1" @ style "style2" @ style "style3" @ [
+    IDENT "f"; L_PAREN; INT (Int64.of_int 42); COMMA; FLOAT 13.37; R_PAREN])
+  (preparse "syntax/typed_lambda_multiline.elon")
+
 let test_suite = ("preparser", [
   test_case "let inline" `Quick test_let_inline;
   test_case "let multiline" `Quick test_let_multiline;
@@ -132,6 +152,8 @@ let test_suite = ("preparser", [
   test_case "lambda multiline" `Quick test_lambda_multiline;
   test_case "lambda unexpected indent" `Quick test_lambda_unexpected_indent;
   test_case "lambda undentation" `Quick test_lambda_undentation;
+  test_case "typed lambda inline" `Quick test_typed_lambda_inline;
+  test_case "typed lambda multiline" `Quick test_typed_lambda_multiline;
   test_case "expr multiline" `Quick test_expr_multiline;
   test_case "expr unexpected indent" `Quick test_expr_unexpected_indent;
   test_case "list inline" `Quick test_list_inline;

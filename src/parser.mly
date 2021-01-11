@@ -68,7 +68,8 @@ expr_not_id:
     { Let { name; typing; value; result } }
   | "if"; cond = expr; "then"; consequent = expr; "else"; alternative = expr
     { Conditional { cond; consequent; alternative } }
-  | params = parameter_list; "=>"; body = expr { Lambda { params; body } }
+  | params = parameter_list; "=>"; body = expr { Lambda (Untyped { params; body }) }
+  | e = typed_lambda_expr { e }
   | fn = expr; "("; args = separated_list(",", expr); ")" { FnApplication { fn; args } }
   | "["; lst = separated_list(",", expr); "]" { List lst }
 
@@ -81,6 +82,15 @@ parameter_list:
   | "("; ")" { [] }
   | "("; param = IDENT; ")" { [param] }
   | "("; hd = IDENT; ","; tl = separated_nonempty_list(",", IDENT); ")" { hd :: tl }
+
+%inline typed_lambda_expr:
+  | typing = typed_parameter_list; "=>"; body = expr
+    { let params, return = typing in Lambda (Typed { params; return; body }) }
+
+typed_parameter_list:
+  | "("; ")"; "->"; return = typing { ([], return) }
+  | "("; params = separated_nonempty_list(",", separated_pair(IDENT, ":", typing)); ")";
+    "->"; return = typing { (params, return) }
 
 %inline paranthesize_expr:
   | "("; e = expr_not_id; ")" { e }
