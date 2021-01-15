@@ -2,7 +2,9 @@ open Containers
 open Lexing
 
 open Tokens
-open Helpers
+
+let src = Logs.Src.create "lexer"
+module Log = (val Logs.src_log src : Logs.LOG)
 
 type t = token * Lexing.position * Lexing.position
 type gen = unit -> t
@@ -76,5 +78,5 @@ let token lexbuf () =
   let token = tokenize lexbuf in
   let start, end_ = Sedlexing.lexing_positions lexbuf in
   let out = (token, start, end_) in
-  Log.debug (fun m -> m "%a" pp out ~header:"lexer");
+  Log.debug (fun m -> m "%a" pp out);
   out

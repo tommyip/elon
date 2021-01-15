@@ -43,19 +43,20 @@ and lambda =
   | Untyped of { params: string list; body: expr }
   | Typed of { params: (string * typing) list; return: typing; body: expr }
 
+let bin_op_fn_name = function
+  | Add -> "+"
+  | Sub -> "-"
+  | Mul -> "*"
+  | Div -> "/"
+  | Eq -> "="
+  | NotEq -> "!="
+  | Lt -> "<"
+  | Gt -> ">"
+  | LtEq -> "<="
+  | GtEq -> ">="
+
 let pp_bin_op fmt bin_op =
-  let sym = match bin_op with
-    | Add -> "+"
-    | Sub -> "-"
-    | Mul -> "*"
-    | Div -> "/"
-    | Eq -> "="
-    | NotEq -> "!="
-    | Lt -> "<"
-    | Gt -> ">"
-    | LtEq -> "<="
-    | GtEq -> ">="
-  in pp_print_string fmt sym
+  pp_print_string fmt (bin_op_fn_name bin_op)
 
 let pp_literal fmt = function
   | Unit -> pp_print_string fmt "()"
@@ -65,7 +66,7 @@ let pp_literal fmt = function
   | Char c -> fprintf fmt "'%s'" c
   | String s -> fprintf fmt "\"%s\"" s
 
-let pp_list ~l ~r fmt pp lst =
+let pp_list ~l ~r pp fmt lst =
     pp_open_hovbox fmt 1;
     pp_print_char fmt l;
     CCList.pp ~pp_sep:(fun fmt () -> pp_print_char fmt ','; pp_print_break fmt 1 0) pp fmt lst;
@@ -76,7 +77,7 @@ let pp_list ~l ~r fmt pp lst =
 let rec pp_typing fmt { name; params } =
   pp_print_string fmt name;
   if List.length params > 0 then
-    pp_list ~l:'<' ~r:'>' fmt pp_typing params
+    pp_list ~l:'<' ~r:'>' pp_typing fmt params
 
 let pp_typed_signature fmt (params, return) =
   let pp_param fmt (name, typing) =
@@ -89,13 +90,14 @@ let pp_typed_signature fmt (params, return) =
   fprintf fmt "@[<hov 1>(%a->@ %a@,)@]" pp_params params pp_typing return
 
 let rec pp_args fmt args =
-  if List.length args > 0 then
+  if List.length args > 0 then begin
     pp_open_hvbox fmt 0;
     CCList.pp
       ~pp_start:pp_print_space
       ~pp_sep:pp_print_space
       pp_expr fmt args;
     pp_close_box fmt ()
+  end
 
 and pp_binding fmt (name, typing, value) =
   match typing with
@@ -119,4 +121,4 @@ and pp_expr fmt = function
     fprintf fmt "@[<hov 2>(%a@ %a@ %a@,)@]" pp_bin_op op pp_expr left pp_expr right
   | Literal lit -> pp_literal fmt lit
   | Ident id -> pp_print_string fmt id
-  | List lst -> pp_list ~l:'[' ~r:']' fmt pp_expr lst
+  | List lst -> pp_list ~l:'[' ~r:']' pp_expr fmt lst

@@ -3,6 +3,9 @@ open Lexing
 open Helpers
 open Tokens
 
+let src = Logs.Src.create "preparser"
+module Log = (val Logs.src_log src : Logs.LOG)
+
 let indent_size = 2
 
 (* TODO: How to recognise whether an angle bracket is a binop or a bracket? *)
@@ -92,9 +95,9 @@ let is_type_param = function TypeParam -> true | _ -> false
 let rec token state =
   let tok, start, _ = peek state in
   let log_push construct offside = Log.debug (fun m ->
-    m "<%a> push %a context (offside: %d)" Tokens.pp tok pp_construct construct offside ~header:"preparser") in
+    m "<%a> push %a context (offside: %d)" Tokens.pp tok pp_construct construct offside) in
   let log_pop construct = Log.debug (fun m ->
-    m "<%a> pop %a context" Tokens.pp tok pp_construct construct ~header:"preparser") in
+    m "<%a> pop %a context" Tokens.pp tok pp_construct construct) in
 
   let prev_line = state.prev_line in
   let deferred_token state = state.prev_line <- prev_line; token state in
@@ -350,5 +353,5 @@ let filter gen =
   state.stack <- [{ construct=Block; line=start.pos_lnum; offside=0; line_indent=0 }];
   fun () ->
     let (tok, _, _) as token = token state in
-    Log.debug (fun m -> m "emit %a" Tokens.pp tok ~header:"preparser");
+    Log.debug (fun m -> m "emit %a" Tokens.pp tok);
     token

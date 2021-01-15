@@ -46,13 +46,16 @@
 %{
   open Ast
   open Helpers
+
+  let src = Logs.Src.create "parser"
+  module Log = (val Logs.src_log src : Logs.LOG)
 %}
 
 %start <expr> prog
 %%
 
 prog: e = expr; EOF {
-  Log.debug (fun m -> m "%a" pp_expr e ~header:"parser");
+  Log.debug (fun m -> m "%a" pp_expr e);
   e
 }
 
